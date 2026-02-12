@@ -4,6 +4,8 @@ on:
   push:
     branches: [ main ]
 
+  workflow_dispatch:
+
 permissions:
   contents: read
   pages: write
@@ -43,20 +45,3 @@ jobs:
 
       - name: Generate Allure Report
         run: allure generate allure-results --clean -o allure-report
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: allure-report
-
-  deploy:
-    needs: test
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
