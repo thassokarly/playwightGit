@@ -11,11 +11,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 18
 
@@ -29,12 +27,11 @@ jobs:
         run: npx playwright test
         continue-on-error: true
 
-      # 🔥 Instala o Allure 2 (Java CLI)
       - name: Install Allure 2 CLI
         run: |
           sudo apt-get update
-          sudo apt-get install -y default-jre
-          curl -o allure.tgz -Ls https://github.com/allure-framework/allure2/releases/latest/download/allure-2.27.0.tgz
+          sudo apt-get install -y default-jre curl
+          curl -L -o allure.tgz https://github.com/allure-framework/allure2/releases/download/2.27.0/allure-2.27.0.tgz
           sudo tar -zxvf allure.tgz -C /opt/
           sudo ln -s /opt/allure-2.27.0/bin/allure /usr/bin/allure
           allure --version
