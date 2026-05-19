@@ -1,4 +1,4 @@
-
+# Imagem oficial do Playwright com navegadores e Node.js modernos já configurados
 image: mcr.microsoft.com/playwright:v1.43.0-jammy
 
 stages:
@@ -9,9 +9,20 @@ stages:
 test_playwright:
   stage: test
   script:
+    # 1. Instala as dependências do seu projeto (incluindo o Playwright)
     - npm ci
-    - npx playwright test
-
+    
+    # 2. Garante que o pacote do mongodb está instalado para o seu script funcionar
+    - npm install mongodb
+    
+    # 3. Roda todos os seus testes do Playwright
+    # O "|| true" serve para o pipeline não travar se um teste quebrar, 
+    # permitindo que o script do Mongo e as Issues rodem na sequência.
+    - npx playwright test || true
+    
+    # 4. Executa o seu script que salva os resultados no banco de dados MongoDB
+    - node saveToMongo.js
+    
   allow_failure: true
   artifacts:
     when: always
@@ -28,7 +39,7 @@ generate_allure:
     - curl -L -o allure.tgz https://github.com/allure-framework/allure2/releases/download/2.27.0/allure-2.27.0.tgz
     - tar -zxvf allure.tgz -C /opt/
     - ln -s /opt/allure-2.27.0/bin/allure /usr/bin/allure
-
+    # Gera a pasta "public" exigida pelo GitLab Pages
     - allure generate allure-results --clean -o public
   artifacts:
     paths:
