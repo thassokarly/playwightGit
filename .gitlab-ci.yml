@@ -24,7 +24,7 @@ test_playwright:
 
 # 2. Salva no banco de dados (usando Node 20 para evitar erros)
 save_mongo:
-  image: node:20
+  image: node:20.19.0
   stage: save
   dependencies:
     - test_playwright
