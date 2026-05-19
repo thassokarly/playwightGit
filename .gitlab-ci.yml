@@ -17,7 +17,6 @@ test_playwright:
     paths:
       - allure-results/
       - test-results/
-    expire_in: 30 days
 
 save_mongo:
   image: node:20
@@ -28,8 +27,6 @@ save_mongo:
     - node -v
     - npm ci
     - node saveToMongo.js
-  only:
-    - main
 
 generate_allure:
   stage: report
@@ -43,16 +40,13 @@ generate_allure:
   artifacts:
     paths:
       - public
-    expire_in: 30 days
 
 pages:
   stage: deploy
   dependencies:
     - generate_allure
   script:
-    - echo "Publicando o Allure Report no GitLab Pages..."
+    - echo "Deploy GitLab Pages"
   artifacts:
     paths:
       - public
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
