@@ -1,0 +1,48 @@
+
+image: mcr.microsoft.com/playwright:v1.43.0-jammy
+
+stages:
+  - test
+  - report
+  - deploy
+
+test_playwright:
+  stage: test
+  script:
+    - npm ci
+    - npx playwright test
+
+  allow_failure: true
+  artifacts:
+    when: always
+    paths:
+      - allure-results/
+      - test-results/
+    expire_in: 30 days
+
+generate_allure:
+  stage: report
+  image: ubuntu:latest
+  script:
+    - apt-get update && apt-get install -y default-jre curl
+    - curl -L -o allure.tgz https://github.com/allure-framework/allure2/releases/download/2.27.0/allure-2.27.0.tgz
+    - tar -zxvf allure.tgz -C /opt/
+    - ln -s /opt/allure-2.27.0/bin/allure /usr/bin/allure
+
+    - allure generate allure-results --clean -o public
+  artifacts:
+    paths:
+      - public
+    expire_in: 30 days
+
+pages:
+  stage: deploy
+  dependencies:
+    - generate_allure
+  script:
+    - echo "Publicando o Allure Report no GitLab Pages..."
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
