@@ -1,52 +1,105 @@
-image: mcr.microsoft.com/playwright:v1.43.0-jammy
+image: mcr.microsoft.com/playwright:v1.41.2-jammy
 
 stages:
   - test
-  - save
   - report
+  - save
   - deploy
 
-test_playwright:
+variables:
+  ALLURE_VERSION: "2.24.0"
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+
+cache:
+  key: pages-cache
+  paths:
+    - node_modules/
+    - public/
+
+before_script:
+  - npm ci
+
+playwright_tests:
   stage: test
   script:
-    - npm ci
-    - npx playwright test
-  allow_failure: true
+    - npx playwright test || true
   artifacts:
     when: always
     paths:
       - allure-results/
-      - test-results/
+    expire_in: 30 days
+
+generate_allure_report:
+  stage: report
+  image: eclipse-temurin:17-jdk
+  before_script: []
+  dependencies:
+    - playwright_tests
+  script:
+    - apt-get update && apt-get install -y wget unzip
+    - wget https://github.com/allure-framework/allure2/releases/download/${ALLURE_VERSION}/allure-${ALLURE_VERSION}.zip
+    - unzip allure-${ALLURE_VERSION}.zip
+    - ./allure-${ALLURE_VERSION}/bin/allure generate allure-results --clean -o allure-report
+  artifacts:
+    when: always
+    paths:
+      - allure-report/
+    expire_in: 7 days
 
 save_mongo:
-  image: node:20
+  image: node:18
   stage: save
   dependencies:
-    - test_playwright
+    - playwright_tests
   script:
-    - node -v
-    - npm ci
+    - npm install mongodb
     - node saveToMongo.js
-
-generate_allure:
-  stage: report
-  image: ubuntu:latest
-  script:
-    - apt-get update && apt-get install -y default-jre curl
-    - curl -L -o allure.tgz https://github.com/allure-framework/allure2/releases/download/2.27.0/allure-2.27.0.tgz
-    - tar -zxvf allure.tgz -C /opt/
-    - ln -s /opt/allure-2.27.0/bin/allure /usr/bin/allure
-    - allure generate allure-results --clean -o public
-  artifacts:
-    paths:
-      - public
-
+  only:
+    - main
 pages:
   stage: deploy
   dependencies:
-    - generate_allure
+    - generate_allure_report
   script:
-    - echo "Deploy GitLab Pages"
+    - mkdir -p public/$CI_PIPELINE_ID
+    - cp -r allure-report/* public/$CI_PIPELINE_ID/
+
+    - |
+      cat << 'EOF' > public/index.html
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Relatórios Allure</title>
+      </head>
+      <body>
+        <h1>📊 Histórico de Relatórios Allure</h1>
+        <div>
+      EOF
+
+    - |
+      formatted_date=$(date -d "$CI_PIPELINE_CREATED_AT" +"%d/%m/%Y")
+
+      for dir in $(ls -d public/*/ 2>/dev/null | sort -rn); do
+        name=$(basename "$dir")
+
+        echo "<div>
+        <a href='./$name/'>#${CI_PIPELINE_IID} • ${CI_COMMIT_BRANCH}</a>
+        <div>Commit: ${CI_COMMIT_SHORT_SHA}</div>
+        <div>Data: ${formatted_date}</div>
+        </div><hr>" >> public/index.html
+      done
+
+    - |
+      cat << 'EOF' >> public/index.html
+        </div>
+      </body>
+      </html>
+      EOF
+
   artifacts:
     paths:
       - public
+  when: always
+  only:
+    - main
