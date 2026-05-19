@@ -1,14 +1,11 @@
-# Imagem global padrao
 image: mcr.microsoft.com/playwright:v1.43.0-jammy
 
-# Ordem de execução da pipeline
 stages:
   - test
   - save
   - report
   - deploy
 
-# 1. Roda os testes
 test_playwright:
   stage: test
   script:
@@ -22,19 +19,18 @@ test_playwright:
       - test-results/
     expire_in: 30 days
 
-# 2. Salva no banco de dados (usando Node 20 para evitar erros)
 save_mongo:
-  image: node:20.19.0
+  image: node:20
   stage: save
   dependencies:
     - test_playwright
   script:
-    - npm install mongodb
+    - node -v
+    - npm ci
     - node saveToMongo.js
   only:
     - main
 
-# 3. Gera o relatorio Allure
 generate_allure:
   stage: report
   image: ubuntu:latest
@@ -49,7 +45,6 @@ generate_allure:
       - public
     expire_in: 30 days
 
-# 4. Publica o site
 pages:
   stage: deploy
   dependencies:
